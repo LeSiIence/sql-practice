@@ -1,0 +1,21 @@
+# Local practice work and generated databases
+/answers/
+/data/
+
+# Python and editor caches
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+.vscode/
+.idea/
+
+# Local credentials and runtime files
+.env
+.env.*
+*.log
+*.pid
+*.db
+*.sqlite
+*.sqlite3
+.DS_Store
