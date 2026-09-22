@@ -14,8 +14,9 @@ class FileRunnerTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.temp=tempfile.TemporaryDirectory()
-        cls.root=Path(cls.temp.name)
-        for name in ['test.py','engine.py','questions.py','datasets.py','oracle.py','schema.sql']:
+        cls.root=Path(cls.temp.name)/'SQL 练习项目'
+        cls.root.mkdir()
+        for name in ['test.py','lab.py','engine.py','questions.py','datasets.py','oracle.py','schema.sql']:
             shutil.copy2(ROOT/name,cls.root/name)
         (cls.root/'answers').mkdir()
 
@@ -24,7 +25,17 @@ class FileRunnerTests(unittest.TestCase):
 
     def run_cli(self,*args):
         return subprocess.run([sys.executable,str(self.root/'test.py'),*args],
-                              cwd='/tmp',capture_output=True,text=True,timeout=30)
+                              cwd=self.temp.name,capture_output=True,text=True,encoding='utf-8',timeout=30)
+
+    def test_init_and_readonly_database_in_unicode_path(self):
+        result=subprocess.run([sys.executable,str(self.root/'lab.py'),'init'],
+                              cwd=self.temp.name,capture_output=True,text=True,encoding='utf-8',timeout=10)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        result=subprocess.run([sys.executable,str(self.root/'lab.py'),'run','--sql',
+                               "SELECT Dname FROM Department WHERE Dname='计算机系'"],
+                              cwd=self.temp.name,capture_output=True,text=True,encoding='utf-8',timeout=10)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('计算机系',result.stdout)
 
     def test_cli_workflow(self):
         for i,sql in enumerate(VALID,1):

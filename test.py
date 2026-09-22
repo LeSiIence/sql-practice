@@ -4,7 +4,7 @@ import argparse
 import json
 import re
 from pathlib import Path
-from engine import ROOT, execute
+from engine import ROOT, execute, configure_output
 from questions import QUESTIONS
 
 
@@ -34,7 +34,7 @@ def display_failure(result, columns, verbose):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         description='编辑 answers/NN.sql 后测试；每题检查 23 组数据。',
-        epilog='示例：python3 test.py -1 | python3 test.py -20 | python3 test.py --all')
+        epilog='示例：python test.py -1 | python test.py -20 | python test.py --all')
     group = parser.add_mutually_exclusive_group(required=True)
     for q in QUESTIONS:
         group.add_argument(f'-{q["id"]}', dest='number', action='store_const',
@@ -75,4 +75,5 @@ def main(argv=None):
 
 
 if __name__ == '__main__':
+    configure_output()
     raise SystemExit(main())

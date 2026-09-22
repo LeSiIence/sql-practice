@@ -4,13 +4,28 @@
 
 ## 环境要求
 
-- WSL Ubuntu 或 Linux。判题使用 `resource` 限制查询资源，不支持直接在 Windows Python 中运行。
+- Windows 原生 Python、WSL Ubuntu 或 Linux。
 - Python >=3.10；`environment.yml` 配置 Python 3.11 和 SQLite >=3.37。
 - 仅使用 Python 标准库，无第三方 pip 依赖，也无需执行 pip 安装命令。
 
 ## 快速开始
 
-在 WSL/Linux 终端执行：
+### Windows（无需 WSL）
+
+安装 Git 和 Miniconda/Anaconda 后，在 **Anaconda Prompt** 或已配置 Conda 的 PowerShell 中执行：
+
+```powershell
+git clone https://github.com/LeSiIence/sql-practice.git
+cd sql-practice
+conda env create -f environment.yml
+conda activate sql-practice
+python lab.py init
+code .
+```
+
+如果 PowerShell 无法使用 `conda activate`，可在 Anaconda Prompt 中执行 `conda init powershell`，然后重新打开 PowerShell；也可以直接在 Anaconda Prompt 中完成全部操作。没有 Conda 也可使用已安装的 Python 3.10+ 运行，无需安装 pip 包。Windows 与 WSL 的 Conda 环境相互独立，在 Windows 上需要单独创建一次。
+
+### WSL / Linux
 
 ```bash
 mkdir -p ~/workspace
@@ -43,7 +58,7 @@ python test.py -1 --verbose  # 展示所有失败场景
 
 **判题忽略行顺序与列别名，检查列顺序、值和重复行次数。** NULL 不等于 0；不要提前对平均分四舍五入。有限测试不能证明查询对所有可能数据都等价，仍需结合题意判断。
 
-VS Code 以 WSL 模式打开项目。在终端激活环境；如使用 Python 扩展，运行 **Python: Select Interpreter**，选择 `sql-practice`。可以通过 `python -c "import sys; print(sys.executable)"` 确认当前解释器。
+Windows 用户直接用 VS Code 打开本地项目；WSL 用户以 WSL 模式打开。随后在对应终端激活环境；如使用 Python 扩展，运行 **Python: Select Interpreter**，选择该系统中的 `sql-practice`。可以通过 `python -c "import sys; print(sys.executable)"` 确认当前解释器。SQL 文件请保存为 UTF-8（可带 BOM），支持中文和含空格的项目路径。
 
 ## 查看题目、数据和结果
 
@@ -53,8 +68,8 @@ python lab.py question 1
 python lab.py schema
 python lab.py run --sql 'SELECT * FROM Student'
 python lab.py run --file answers/01.sql
-python test.py -1 --file /path/to/my-answer.sql
-python lab.py export-case 2 /tmp/case-02.sql
+python test.py -1 --file answers/01.sql
+python lab.py export-case 2 data/case-02.sql
 ```
 
 表结构、外键、数据说明、20 题的判题约定以及第 18/20 题的直接先修课定义，见 [数据库与判题说明](docs/reference.md)。完整题目也可用 `python lab.py list` 查看。
@@ -87,5 +102,7 @@ python -m unittest discover -s tests -v
 ```
 
 回归测试覆盖 20 题 × 23 组数据、常见错误 SQL、外键约束、只读与超时限制，以及命令行工作流。`tests/test_lab.py` 含验证用 SQL，想独立练习时无需阅读。
+
+Windows 和 Linux 都使用独立查询进程，提供单场景约 1.2 秒、整次最多 10 秒的超时限制，以及只读检查和最多 2,000 行的结果限制。Linux 额外通过 `resource` 限制 256 MiB 地址空间和 8 秒 CPU 时间；Windows 不设置这两项操作系统资源上限。判题子进程和命令行输出使用 UTF-8，避免中文在 Windows 管道中乱码。
 
 若需恢复基础数据库，先将 `data/practice.db` 重命名备份，再运行 `python lab.py init`；答案文件保持不变。使用 `conda deactivate` 退出环境。

@@ -24,7 +24,7 @@
 失败时显示缺少/多出的行（各最多 8 行）。需要复现其他测试数据时，导出第 1–23 组数据到新的文件：
 
 ```bash
-python lab.py export-case 2 /tmp/case-02.sql
+python lab.py export-case 2 data/case-02.sql
 ```
 
 导出是包含 DDL 和数据的完整 SQL 脚本，应用到空数据库。场景名称会显示在失败报告中；完整顺序见 `datasets.py`。判题总是在内存中重建固定测试数据，不受你对 `practice.db` 的修改影响。有限测试不能证明对所有可能数据库状态都正确；语义正确性仍需自己推理。
@@ -50,6 +50,6 @@ python lab.py export-case 2 /tmp/case-02.sql
 python -m unittest discover -s tests -v
 ```
 
-查询使用独立进程、只读授权、单场景约 1.2 秒、整次最多 10 秒、256 MiB 地址空间、2,000 行结果限制。SELECT 和 WITH 查询可用；禁止写表、DDL、PRAGMA、ATTACH 和扩展加载。不启动任何网络服务。
+Windows 原生 Python、WSL 和 Linux 均受支持。查询使用独立进程、只读授权、单场景约 1.2 秒、整次最多 10 秒、2,000 行结果限制。Linux 额外设置 256 MiB 地址空间和 8 秒 CPU 时间上限；Windows 不设置这两项操作系统资源上限，但仍执行查询和进程超时限制。SELECT 和 WITH 查询可用；禁止写表、DDL、PRAGMA、ATTACH 和扩展加载。不启动任何网络服务。SQL 文件使用 UTF-8，子进程通信也使用 UTF-8。
 
 `python lab.py init` 可补建缺少的数据库和答案文件，保留已有答案；它不会覆盖已存在的数据库。若需恢复基础数据，将 `data/practice.db` 重命名备份，再运行 `init`。题目答案在 `answers/`，与数据库独立。

@@ -11,10 +11,25 @@ from questions import QUESTIONS
 
 ROOT=Path(__file__).resolve().parent
 DB=ROOT/'data'/'practice.db'
+WORKER_TIMEOUT=10
+
+def configure_output():
+    """Keep Chinese output readable in Windows terminals and redirected pipes."""
+    for stream in (sys.stdout,sys.stderr):
+        if hasattr(stream,'reconfigure'):
+            stream.reconfigure(encoding='utf-8',errors='backslashreplace')
+
+def apply_resource_limits():
+    # Windows has no resource module. Wall-clock limits and SQLite's query
+    # deadline still apply on every platform; Linux also caps memory and CPU.
+    if sys.platform.startswith('linux'):
+        import resource
+        resource.setrlimit(resource.RLIMIT_AS,(256*1024*1024,256*1024*1024))
+        resource.setrlimit(resource.RLIMIT_CPU,(8,8))
 
 def connection(data):
     conn=sqlite3.connect(':memory:')
-    conn.executescript((ROOT/'schema.sql').read_text())
+    conn.executescript((ROOT/'schema.sql').read_text(encoding='utf-8'))
     populate(conn,data)
     return conn
 
@@ -23,7 +38,7 @@ def initialize():
     if not DB.exists():
         con=sqlite3.connect(DB)
         try:
-            con.executescript((ROOT/'schema.sql').read_text())
+            con.executescript((ROOT/'schema.sql').read_text(encoding='utf-8'))
             populate(con,base())
         finally: con.close()
     answers=ROOT/'answers'; answers.mkdir(exist_ok=True)
@@ -100,17 +115,16 @@ def work(job):
 
 def execute(job):
     try:
-        proc=subprocess.run([sys.executable,str(ROOT/'engine.py')],input=json.dumps(job),text=True,capture_output=True,timeout=10,cwd=ROOT)
+        proc=subprocess.run([sys.executable,'-X','utf8',str(ROOT/'engine.py')],input=json.dumps(job),text=True,encoding='utf-8',capture_output=True,timeout=WORKER_TIMEOUT,cwd=ROOT)
         if proc.returncode: return dict(ok=False,error='查询进程超出资源限制或执行失败。请缩小查询。')
         return json.loads(proc.stdout)
     except subprocess.TimeoutExpired: return dict(ok=False,error='查询超时（总时限 10 秒）。')
     except (ValueError,OSError) as exc: return dict(ok=False,error=str(exc))
 
 if __name__=='__main__':
+    configure_output()
     try:
-        import resource
-        resource.setrlimit(resource.RLIMIT_AS,(256*1024*1024,256*1024*1024))
-        resource.setrlimit(resource.RLIMIT_CPU,(8,8))
+        apply_resource_limits()
         result=work(json.load(sys.stdin))
     except Exception as exc: result=dict(ok=False,error=str(exc) or type(exc).__name__)
     print(json.dumps(result,ensure_ascii=False))

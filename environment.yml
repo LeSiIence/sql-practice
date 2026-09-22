@@ -1,4 +1,5 @@
 name: sql-practice
+# Shared by native Windows, WSL and Linux; no platform-specific packages.
 channels:
   - defaults
 dependencies:

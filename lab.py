@@ -3,7 +3,7 @@ import argparse
 import json
 import sys
 from datasets import cases
-from engine import ROOT, DB, initialize, connection, execute
+from engine import ROOT, DB, initialize, connection, execute, configure_output
 from questions import QUESTIONS
 
 def show(result):
@@ -35,14 +35,14 @@ def main():
     if args.command=='init': print(f'数据库已就绪：{DB}\n答案目录：{ROOT / "answers"}（保留已有答案）')
     elif args.command=='list':
         for q in QUESTIONS: print(f'{q["id"]:02}. {q["title"]}')
-    elif args.command=='schema': print((ROOT/'schema.sql').read_text())
+    elif args.command=='schema': print((ROOT/'schema.sql').read_text(encoding='utf-8'))
     elif args.command=='question':
         q=QUESTIONS[args.number-1]; print(q['title']+'\n输出列顺序：'+', '.join(q['columns'])+'\n'+q['note'])
     elif args.command in ('run','check'):
         if args.sql is not None: sql=args.sql
         else:
             path=__import__('pathlib').Path(args.file) if args.file else ROOT/'answers'/f'{args.number:02}.sql'
-            sql=path.read_text(encoding='utf-8')
+            sql=path.read_text(encoding='utf-8-sig')
         result=execute(dict(action=args.command,sql=sql,question=getattr(args,'number',None))); show(result)
         sys.exit(0 if result['ok'] else 1)
     elif args.command=='check-all':
@@ -57,4 +57,6 @@ def main():
         with Path(args.output).open('x',encoding='utf-8') as f: f.write('\n'.join(conn.iterdump())+'\n')
         conn.close(); print('已导出：'+name)
 
-if __name__=='__main__': main()
+if __name__=='__main__':
+    configure_output()
+    main()
