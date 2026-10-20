@@ -1,6 +1,6 @@
 # SQL Practice · 高校教学数据库练习
 
-在 VS Code 中编写 SQL，在终端逐题判定结果。包含 6 张关联表、20 道题和 23 组可重现测试数据，不需要网页或数据库服务。
+在 VS Code 中编写 SQL，在终端逐题判定结果。包含 6 张关联表、24 道题和 27 组可重现测试数据，不需要网页或数据库服务。
 
 ## 环境要求
 
@@ -40,7 +40,7 @@ code .
 
 已有本地项目和 Conda 环境时，只需进入项目并执行 `conda activate sql-practice`，不用再次克隆或创建环境。若当前终端无法使用 `conda activate`，先加载 Conda 的 shell 脚本，例如 Miniconda 默认安装位置下的 `source ~/miniconda3/etc/profile.d/conda.sh`。
 
-`init` 生成 `data/practice.db` 和 `answers/01.sql`～`answers/20.sql`；已存在的数据库和答案不会被覆盖。环境安装后，练习和判题均可离线运行。
+`init` 生成 `data/practice.db` 和 `answers/01.sql`～`answers/24.sql`；已存在的数据库和答案不会被覆盖。已有项目更新后再次运行 `python lab.py init`，即可补建第 21–24 题的答案模板。环境安装后，练习和判题均可离线运行。
 
 ## 编辑与测试
 
@@ -50,11 +50,13 @@ code .
 python test.py -1            # 测试 answers/01.sql
 python test.py -10           # 测试第 10 题
 python test.py -20           # 测试第 20 题
-python test.py --all         # 测试全部 20 题
+python test.py -21           # 测试第 21 题：每门课程第二高分
+python test.py -24           # 测试第 24 题：直接依赖课程数
+python test.py --all         # 测试全部 24 题
 python test.py -1 --verbose  # 展示所有失败场景
 ```
 
-每题执行 23 组数据，默认显示首个失败场景和缺少/多出的行。空白或只有注释的文件显示“未作答”；`--all` 继续检查其余题目并汇总。退出码：全部通过为 `0`，未通过、未作答或文件错误为 `1`，参数错误为 `2`。
+每题执行 27 组数据，默认显示首个失败场景和缺少/多出的行。空白或只有注释的文件显示“未作答”；`--all` 继续检查其余题目并汇总。退出码：全部通过为 `0`，未通过、未作答或文件错误为 `1`，参数错误为 `2`。
 
 **判题忽略行顺序与列别名，检查列顺序、值和重复行次数。** NULL 不等于 0；不要提前对平均分四舍五入。有限测试不能证明查询对所有可能数据都等价，仍需结合题意判断。
 
@@ -72,16 +74,23 @@ python test.py -1 --file answers/01.sql
 python lab.py export-case 2 data/case-02.sql
 ```
 
-表结构、外键、数据说明、20 题的判题约定以及第 18/20 题的直接先修课定义，见 [数据库与判题说明](docs/reference.md)。完整题目也可用 `python lab.py list` 查看。
+表结构、外键、数据说明、24 题的判题约定以及第 18/20/24 题的直接先修课定义，见 [数据库与判题说明](docs/reference.md)。完整题目也可用 `python lab.py list` 查看。
+
+新增题目：
+
+21. 查询每门课程中成绩第二高的学生。按不同分数排名，最高分并列不占用第二名，第二高分并列学生全部列出。输出课程号、课程名、学号、姓名、成绩。
+22. 查询所有已选课程成绩均及格的学生。
+23. 查询每个系中选课总学分最高的学生。
+24. 查询每门课程作为先修课被多少门课程直接依赖。
 
 ## 项目结构
 
 ```text
 sql-practice/
-├── test.py             # 日常判题入口：-1 … -20 / --all
+├── test.py             # 日常判题入口：-1 … -24 / --all
 ├── lab.py              # 初始化、查看题目、运行 SQL、导出数据
 ├── engine.py           # 查询执行、资源限制、结果比较
-├── questions.py        # 20 道题及输出要求
+├── questions.py        # 24 道题及输出要求
 ├── datasets.py         # 基础数据与边界场景
 ├── oracle.py           # 使用 Python 计算期望结果
 ├── schema.sql          # 建表及约束
@@ -101,7 +110,7 @@ sql-practice/
 python -m unittest discover -s tests -v
 ```
 
-回归测试覆盖 20 题 × 23 组数据、常见错误 SQL、外键约束、只读与超时限制，以及命令行工作流。`tests/test_lab.py` 含验证用 SQL，想独立练习时无需阅读。
+回归测试覆盖 24 题 × 27 组数据、常见错误 SQL、外键约束、只读与超时限制，以及命令行工作流。`tests/test_lab.py` 含验证用 SQL，想独立练习时无需阅读。
 
 Windows 和 Linux 都使用独立查询进程，提供单场景约 1.2 秒、整次最多 10 秒的超时限制，以及只读检查和最多 2,000 行的结果限制。Linux 额外通过 `resource` 限制 256 MiB 地址空间和 8 秒 CPU 时间；Windows 不设置这两项操作系统资源上限。判题子进程和命令行输出使用 UTF-8，避免中文在 Windows 管道中乱码。
 

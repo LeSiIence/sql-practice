@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""从 answers/01.sql … answers/20.sql 读取答案并判题。"""
+"""从 answers/NN.sql 读取答案并判题，题号由 QUESTIONS 决定。"""
 import argparse
 import json
 import re
 from pathlib import Path
+from datasets import cases
 from engine import ROOT, execute, configure_output
 from questions import QUESTIONS
 
@@ -32,20 +33,21 @@ def display_failure(result, columns, verbose):
 
 
 def main(argv=None):
+    case_count = len(cases())
     parser = argparse.ArgumentParser(
-        description='编辑 answers/NN.sql 后测试；每题检查 23 组数据。',
-        epilog='示例：python test.py -1 | python test.py -20 | python test.py --all')
+        description=f'编辑 answers/NN.sql 后测试；每题检查 {case_count} 组数据。',
+        epilog=f'示例：python test.py -1 | python test.py -{len(QUESTIONS)} | python test.py --all')
     group = parser.add_mutually_exclusive_group(required=True)
     for q in QUESTIONS:
         group.add_argument(f'-{q["id"]}', dest='number', action='store_const',
                            const=q['id'], help=f'测试第 {q["id"]} 题：answers/{q["id"]:02}.sql')
-    group.add_argument('--all', action='store_true', help='测试全部 20 个答案文件')
+    group.add_argument('--all', action='store_true', help=f'测试全部 {len(QUESTIONS)} 个答案文件')
     parser.add_argument('--verbose', '-v', action='store_true', help='显示每个失败场景的详情')
     parser.add_argument('--file', type=Path, help='单题测试时指定其他 SQL 文件')
     args = parser.parse_args(argv)
     if args.all and args.file:
         parser.error('--file 只能与单题参数（如 -1）一起使用')
-    numbers = range(1,21) if args.all else [args.number]
+    numbers = range(1,len(QUESTIONS)+1) if args.all else [args.number]
     stats = dict(passed=0, failed=0, blank=0)
     for number in numbers:
         q = QUESTIONS[number-1]
@@ -67,7 +69,7 @@ def main(argv=None):
             stats['passed'] += 1
         else:
             stats['failed'] += 1
-            print(f'[未通过] {result.get("passed",0)}/{result.get("total",23)} 组数据')
+            print(f'[未通过] {result.get("passed",0)}/{result.get("total",case_count)} 组数据')
             display_failure(result, q['columns'], args.verbose)
     total = sum(stats.values())
     print(f'\n汇总：通过 {stats["passed"]}/{total}，未通过/错误 {stats["failed"]}，未作答 {stats["blank"]}')

@@ -7,6 +7,7 @@ sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from datasets import base,cases
 from engine import connection,query,diff,execute,initialize
 from oracle import expected
+from questions import QUESTIONS
 
 VALID = [
  "SELECT Sno,Sname,Sage FROM Student JOIN Department USING(Dno) WHERE Dname='计算机系'",
@@ -29,16 +30,22 @@ VALID = [
  "SELECT Sno,Sname FROM Student s WHERE EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno) AND NOT EXISTS(SELECT 1 FROM SC x JOIN Prerequisite p ON x.Cno=p.Cno WHERE x.Sno=s.Sno AND NOT EXISTS(SELECT 1 FROM SC y WHERE y.Sno=s.Sno AND y.Cno=p.Pno AND y.Grade>=60))",
  "SELECT Cno,Cname FROM Course c WHERE NOT EXISTS(SELECT 1 FROM Student s WHERE NOT EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno AND Cno=c.Cno AND Grade>=60))",
  "SELECT s.Sno,Sname,c.Cno,Cname FROM Student s CROSS JOIN Course c WHERE NOT EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno AND Cno=c.Cno) AND NOT EXISTS(SELECT 1 FROM Prerequisite p WHERE p.Cno=c.Cno AND NOT EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno AND Cno=p.Pno AND Grade>=60))",
+ "WITH ranked AS (SELECT Cno,Sno,Grade,DENSE_RANK() OVER (PARTITION BY Cno ORDER BY Grade DESC) AS place FROM SC WHERE Grade IS NOT NULL) SELECT c.Cno,c.Cname,s.Sno,s.Sname,r.Grade FROM ranked r JOIN Course c ON c.Cno=r.Cno JOIN Student s ON s.Sno=r.Sno WHERE r.place=2",
+ "SELECT Sno,Sname FROM Student s WHERE EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno) AND NOT EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno AND (Grade<60 OR Grade IS NULL))",
+ "WITH credits AS (SELECT s.Dno,s.Sno,s.Sname,COALESCE(SUM(c.Credit),0) AS total FROM Student s LEFT JOIN SC ON s.Sno=SC.Sno LEFT JOIN Course c ON c.Cno=SC.Cno GROUP BY s.Dno,s.Sno,s.Sname) SELECT Dno,Sno,Sname,total FROM credits a WHERE total=(SELECT MAX(b.total) FROM credits b WHERE b.Dno=a.Dno)",
+ "SELECT c.Cno,c.Cname,COUNT(p.Cno) FROM Course c LEFT JOIN Prerequisite p ON p.Pno=c.Cno GROUP BY c.Cno,c.Cname",
 ]
 
 class LabTests(unittest.TestCase):
-    def test_all_20_queries_on_all_23_cases(self):
+    def test_all_queries_on_all_cases(self):
+        self.assertEqual(len(VALID),len(QUESTIONS))
         for name,data in cases():
             con=connection(data)
             self.assertEqual(con.execute('PRAGMA foreign_key_check').fetchall(),[])
             for q,sql in enumerate(VALID,1):
                 with self.subTest(case=name,q=q):
                     cols,rows=query(con,sql)
+                    self.assertEqual(len(cols),len(QUESTIONS[q-1]['columns']))
                     self.assertEqual(diff(rows,expected(q,data)),([],[]))
             con.close()
 
@@ -52,6 +59,32 @@ class LabTests(unittest.TestCase):
         self.assertIn(('C6',2,None,None),expected(7,d))
         self.assertIn(('D1','S1','李华',80.0),expected(17,d))
         self.assertIn(('D1','S2','王芳',80.0),expected(17,d))
+        self.assertEqual(set(expected(21,d)),{
+            ('C1','数据库系统','S1','李华',90),('C2','数据结构','S1','李华',80),
+            ('C3','程序设计','S3','刘洋',60),('C3','程序设计','S4','陈晨',60),
+            ('C4','高等数学','S11','李华',90),('C5','大学英语','S12','林晓',60)})
+        self.assertEqual(set(expected(22,d)),{('S1','李华'),('S2','王芳'),('S6','周杰'),('S11','李华'),('S12','林晓')})
+        self.assertEqual(set(expected(23,d)),{('D1','S3','刘洋',12),('D2','S5','赵敏',8),
+                                              ('D3','S7','吴桐',5),('D4','S9','孙宁',0),('D4','S10','何平',0)})
+        self.assertEqual({c:count for c,name,count in expected(24,d)},
+                         {'C1':2,'C2':1,'C3':1,'C4':1,'C5':1,'C6':0,'C7':0,'C8':0,'C9':0})
+
+    def test_new_question_edge_cases(self):
+        data=dict(cases())
+        self.assertEqual(set(expected(21,data['不同分数第二高与并列'])),{
+            ('C1','数据库系统','S3','刘洋',90),('C1','数据库系统','S4','陈晨',90),
+            ('C3','程序设计','S1','李华',0)})
+        self.assertEqual(set(expected(22,data['全科及格与NULL及未选课'])),{('S1','李华'),('S5','赵敏')})
+        self.assertEqual(set(expected(23,data['总学分并列与同分学分及小数'])),{
+            ('D1','S1','李华',5),('D1','S2','王芳',5),('D2','S6','周杰',2.5),
+            ('D3','S7','吴桐',2.5),('D3','S8','郑欣',2.5),('D4','S9','孙宁',0),('D4','S10','何平',0)})
+        self.assertEqual({c:count for c,name,count in expected(24,data['直接依赖方向与多先修及先修链'])},
+                         {'C1':2,'C2':2,'C3':1,'C4':0,'C5':0,'C6':0,'C7':0,'C8':0,'C9':0})
+        self.assertEqual(expected(21,data['全部成绩未录入']),[])
+        self.assertEqual(expected(22,data['全体未选课']),[])
+        self.assertEqual(len(expected(23,data['全体未选课'])),len(base()['Student']))
+        self.assertEqual(expected(23,data['学生全集为空']),[])
+        self.assertEqual(expected(24,data['课程全集为空']),[])
 
     def test_bad_queries_rejected_by_cases(self):
         wrong=[(3,"SELECT Sno FROM SC WHERE Cno IN ('C1','C2')"),
@@ -60,7 +93,21 @@ class LabTests(unittest.TestCase):
                (12,VALID[11]+" AND s.Sno<>'S1'"),
                (17,VALID[16]+" LIMIT 1"),
                (18,VALID[17].replace('y.Grade>=60','(y.Grade>=60 OR y.Grade IS NULL)')),
-               (20,VALID[19].replace('Grade>=60','Grade>60'))]
+               (20,VALID[19].replace('Grade>=60','Grade>60')),
+               (21,VALID[20].replace('DENSE_RANK()','RANK()')),
+               (21,VALID[20].replace('DENSE_RANK()','ROW_NUMBER()')),
+               (21,VALID[20].replace(' WHERE Grade IS NOT NULL','')),
+               (22,VALID[21].replace('Grade<60 OR Grade IS NULL','Grade<60')),
+               (22,VALID[21].replace('Grade<60','Grade<=60')),
+               (22,VALID[21].replace('EXISTS(SELECT 1 FROM SC WHERE Sno=s.Sno) AND ','')),
+               (23,VALID[22].replace('SUM(c.Credit)','SUM(DISTINCT c.Credit)')),
+               (23,VALID[22].replace('SUM(c.Credit)','COUNT(c.Cno)')),
+               (23,VALID[22].replace('LEFT JOIN SC','JOIN SC')),
+               (23,VALID[22].replace('GROUP BY s.Dno','WHERE SC.Grade>=60 GROUP BY s.Dno')),
+               (23,VALID[22]+' LIMIT 1'),
+               (24,VALID[23].replace('p.Pno=c.Cno','p.Cno=c.Cno')),
+               (24,VALID[23].replace('COUNT(p.Cno)','COUNT(*)')),
+               (24,VALID[23].replace('LEFT JOIN','JOIN'))]
         for q,sql in wrong:
             failures=0
             for _,d in cases():
@@ -89,6 +136,9 @@ class LabTests(unittest.TestCase):
     def test_subprocess(self):
         initialize()
         self.assertTrue(execute(dict(action='check',question=1,sql=VALID[0]))['ok'])
+        for q in range(21,len(QUESTIONS)+1):
+            with self.subTest(q=q):
+                self.assertTrue(execute(dict(action='check',question=q,sql=VALID[q-1]))['ok'])
         self.assertFalse(execute(dict(action='check',question=1,sql='SELECT 1 WHERE 0'))['ok'])
         self.assertTrue(execute(dict(action='run',sql='SELECT * FROM Student'))['ok'])
 

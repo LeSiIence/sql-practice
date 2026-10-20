@@ -46,6 +46,22 @@ def cases():
         rng=random.Random(1700+seed); d=copy.deepcopy(b)
         d['SC']=[(s[0],c[0],rng.choice([None,0,59,60,75,80,81,90,100])) for s in d['Student'] for c in d['Course'] if rng.random()<.55]
         out.append((f'组合数据{seed+1:02}',d))
+    d=copy.deepcopy(b)
+    d['SC']=[('S1','C1',100),('S2','C1',100),('S3','C1',90),('S4','C1',90),('S5','C1',60),('S6','C1',None),
+             ('S1','C2',75),('S2','C2',75),('S3','C2',None),('S1','C3',0),('S2','C3',60),('S3','C3',None)]
+    out.append(('不同分数第二高与并列',d))
+    d=copy.deepcopy(b)
+    d['SC']=[('S1','C1',60),('S1','C2',100),('S2','C1',59),('S3','C1',None),('S4','C1',60),('S4','C2',None),
+             ('S5','C4',60),('S6','C4',60),('S6','C5',59)]
+    out.append(('全科及格与NULL及未选课',d))
+    d=copy.deepcopy(b)
+    d['Course']=[(c,n,2.5 if c in {'C1','C2'} else 5 if c=='C3' else cr,dep,t) for c,n,cr,dep,t in d['Course']]
+    d['SC']=[('S1','C1',None),('S1','C2',0),('S2','C3',100),('S3','C1',100),
+             ('S4','C4',100),('S5','C5',None),('S6','C1',59),('S7','C1',60),('S8','C2',60)]
+    out.append(('总学分并列与同分学分及小数',d))
+    d=copy.deepcopy(b)
+    d['Prerequisite']=[('C2','C1'),('C3','C1'),('C3','C2'),('C4','C2'),('C5','C3')]
+    out.append(('直接依赖方向与多先修及先修链',d))
     return out
 
 def populate(conn,data):

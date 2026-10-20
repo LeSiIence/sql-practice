@@ -26,9 +26,9 @@ def main():
     parser=argparse.ArgumentParser(description='高校教学数据库 SQL 实战环境')
     sub=parser.add_subparsers(dest='command',required=True)
     sub.add_parser('init'); sub.add_parser('list'); sub.add_parser('schema')
-    p=sub.add_parser('question'); p.add_argument('number',type=int,choices=range(1,21))
+    p=sub.add_parser('question'); p.add_argument('number',type=int,choices=range(1,len(QUESTIONS)+1))
     p=sub.add_parser('run'); g=p.add_mutually_exclusive_group(required=True); g.add_argument('--sql'); g.add_argument('--file')
-    p=sub.add_parser('check'); p.add_argument('number',type=int,choices=range(1,21)); p.add_argument('--file'); p.add_argument('--sql')
+    p=sub.add_parser('check'); p.add_argument('number',type=int,choices=range(1,len(QUESTIONS)+1)); p.add_argument('--file'); p.add_argument('--sql')
     sub.add_parser('check-all')
     p=sub.add_parser('export-case'); p.add_argument('number',type=int,choices=range(1,len(cases())+1)); p.add_argument('output')
     args=parser.parse_args(); initialize()
@@ -50,7 +50,7 @@ def main():
         for q in QUESTIONS:
             result=execute(dict(action='check',sql=(ROOT/'answers'/f'{q["id"]:02}.sql').read_text(encoding='utf-8'),question=q['id']))
             passed+=int(result['ok']); print(f'第 {q["id"]:02} 题：'+('通过' if result['ok'] else '未通过'))
-        print(f'共通过 {passed}/20 题'); sys.exit(0 if passed==20 else 1)
+        print(f'共通过 {passed}/{len(QUESTIONS)} 题'); sys.exit(0 if passed==len(QUESTIONS) else 1)
     elif args.command=='export-case':
         from pathlib import Path
         name,data=cases()[args.number-1]; conn=connection(data)

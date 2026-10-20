@@ -97,7 +97,7 @@ def work(job):
         finally: conn.close()
         return dict(ok=True,columns=cols,rows=rows,count=len(rows))
     q=int(job['question'])
-    if not 1<=q<=20: raise ValueError('题号必须为 1–20')
+    if not 1<=q<=len(QUESTIONS): raise ValueError(f'题号必须为 1–{len(QUESTIONS)}')
     results=[]
     for name,data in cases():
         conn=connection(data)

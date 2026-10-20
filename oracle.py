@@ -1,4 +1,6 @@
 """用 Python 集合与聚合计算期望结果，不向用户提供 SQL 答案。"""
+from questions import QUESTIONS
+
 def expected(q,d):
     students=d['Student']; courses=d['Course']; sc=d['SC']
     deps={r[0]:r[1] for r in d['Department']}
@@ -46,4 +48,18 @@ def expected(q,d):
     if q==18: return people(lambda s:bool(selected[s]) and all(passed(s,p) for c in selected[s] for p in prereq[c]))
     if q==19: return [(c[0],c[1]) for c in courses if all(passed(s[0],c[0]) for s in students)]
     if q==20: return [(s[0],s[1],c[0],c[1]) for s in students for c in courses if c[0] not in selected[s[0]] and all(passed(s[0],p) for p in prereq[c[0]])]
-    raise ValueError('题号必须为 1–20')
+    if q==21:
+        result=[]
+        names={s[0]:s[1] for s in students}
+        for c in courses:
+            scores=sorted({g for sn,cn,g in sc if cn==c[0] and g is not None},reverse=True)
+            if len(scores)>=2:
+                result.extend((c[0],c[1],sn,names[sn],g) for sn,cn,g in sc if cn==c[0] and g==scores[1])
+        return result
+    if q==22: return people(lambda s:bool(selected[s]) and all(passed(s,c) for c in selected[s]))
+    if q==23:
+        credits={s[0]:sum(cs[c][2] for c in selected[s[0]]) for s in students}
+        tops={dep:max((credits[s[0]] for s in students if s[4]==dep),default=None) for dep in deps}
+        return [(s[4],s[0],s[1],credits[s[0]]) for s in students if credits[s[0]]==tops[s[4]]]
+    if q==24: return [(c[0],c[1],len({cn for cn,p in d['Prerequisite'] if p==c[0]})) for c in courses]
+    raise ValueError(f'题号必须为 1–{len(QUESTIONS)}')
